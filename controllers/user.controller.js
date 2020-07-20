@@ -207,15 +207,18 @@ module.exports.postActionLike = async (req, res) => {
                 console.log(err);
             }
         });  
-
+        
         let likes = await Like.find();
+        likes.push(newActionLike)
+        console.log(likes);
 
         return res.json(likes);
     }
 
     Like.findOneAndDelete({ postId: postId, userId: user._id }).then(result => {});
-
+  
     let likes = await Like.find();
+    console.log(likes);
 
     return res.json(likes);
 }

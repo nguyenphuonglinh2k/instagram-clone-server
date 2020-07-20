@@ -16,6 +16,20 @@ mongoose.connection.on('error', (err) => {
 
 const app = express()
 const apiPort = 5000
+const http = require("http").Server(app);
+const io = require("socket.io")(http);
+
+const Like = require('./models/like.model');
+
+io.on("connection", function(socket) {
+
+    socket.on("like_action", async function(data) {
+        const { postId, user } = data;
+        const actionLike = await Like.findOne({ postId: postId, userId: user._id });
+        if (!actionLike)
+            io.sockets.emit("like_res", data);
+    });
+});
 
 const userRoute = require('./routes/user.route');
 
@@ -29,4 +43,7 @@ app.get('/', (req, res) => {
     res.send('Hello World!')
 })
 
-app.listen(apiPort, () => console.log(`Server running on port ${apiPort}`))
+// app.listen(apiPort, () => console.log(`Server running on port ${apiPort}`))
+http.listen(apiPort, function() {
+    console.log("Listening on *:" + apiPort);
+})
