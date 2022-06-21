@@ -1,49 +1,54 @@
-require('dotenv').config()
+require("dotenv").config();
 
-const express = require('express')
-const bodyParser = require('body-parser')
-const mongoose = require('mongoose');
-const cors = require('cors')
-
-mongoose.connect(process.env.MONGO_URI, {useNewUrlParser: true, useUnifiedTopology: true});
-
-mongoose.connection.on('connected', () => {
-    console.log('connected to mongo yeahh!');
-});
-mongoose.connection.on('error', (err) => {
-    console.log('error connecting:', err);
-});
-
-const app = express()
-const apiPort = 5000
+const express = require("express");
+const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const app = express();
+const apiPort = 5000;
 const http = require("http").Server(app);
 const io = require("socket.io")(http);
 
-const Like = require('./models/like.model');
+const Like = require("./models/like.model");
+const userRoute = require("./routes/user.route");
+const postRoute = require("./routes/post.route");
+const authRoute = require("./routes/auth.route");
 
-io.on("connection", function(socket) {
-
-    socket.on("like_action", async function(data) {
-        const { postId, user } = data;
-        const actionLike = await Like.findOne({ postId: postId, userId: user._id });
-        if (!actionLike)
-            io.sockets.emit("like_res", data);
-    });
+// Connect Mongo
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 });
 
-const userRoute = require('./routes/user.route');
+mongoose.connection.on("connected", () => {
+  console.log("connected to mongo yeah!");
+});
+mongoose.connection.on("error", (err) => {
+  console.log("error connecting:", err);
+});
 
-app.use(bodyParser.urlencoded({ extended: true }))
-app.use(cors())
-app.use(bodyParser.json())
+// Socket handling
+io.on("connection", function (socket) {
+  socket.on("like_action", async function (data) {
+    const { postId, user } = data;
+    const actionLike = await Like.findOne({ postId: postId, userId: user._id });
+    if (!actionLike) io.sockets.emit("like_res", data);
+  });
+});
 
-app.use('/api', userRoute);
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors());
+app.use(bodyParser.json());
 
-app.get('/', (req, res) => {
-    res.send('Hello World!')
-})
+app.use("/api", userRoute);
+app.use("/api", postRoute);
+app.use("/api/auth", authRoute);
+
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 
 // app.listen(apiPort, () => console.log(`Server running on port ${apiPort}`))
-http.listen(apiPort, function() {
-    console.log("Listening on *:" + apiPort);
-})
+http.listen(apiPort, function () {
+  console.log("Listening on *:" + apiPort);
+});
