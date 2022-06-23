@@ -2,14 +2,14 @@ const Post = require("../models/post.model");
 const Like = require("../models/like.model");
 const Comment = require("../models/comment.model");
 
-module.exports.getAllPosts = async (req, res) => {
-  const allPost = await Post.find();
-  res.json(allPost);
+module.exports.getAllPosts = async (_, res) => {
+  const allPost = await Post.find().sort({ createdAt: -1 });
+  res.status(200).json(allPost);
 };
 
 module.exports.getAllLikes = async (req, res) => {
   const allLike = await Like.find();
-  res.json(allLike);
+  res.status(200).json(allLike);
 };
 
 module.exports.getAllComments = async (req, res) => {
@@ -24,10 +24,13 @@ module.exports.postCreateMyPost = async (req, res) => {
   if (!imageUrl || !caption)
     return res.json({ error: "Please filled the field" });
 
+  const date = new Date();
+
   const newPost = new Post({
     caption,
     imageUrl,
     user: user,
+    createdAt: date,
   });
 
   newPost.save((err, newPost) => {
@@ -37,7 +40,7 @@ module.exports.postCreateMyPost = async (req, res) => {
     }
 
     console.log("Saved successfully");
-    return res.json({ message: "Created post successfully" });
+    return res.status(201).json({ message: "Created post successfully" });
   });
 };
 

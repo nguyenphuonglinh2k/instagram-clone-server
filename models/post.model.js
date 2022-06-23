@@ -12,6 +12,9 @@ const postSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    createdAt: {
+      type: Date,
+    },
     user: {
       _id: {
         type: ObjectId,

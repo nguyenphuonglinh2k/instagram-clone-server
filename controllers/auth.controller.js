@@ -68,7 +68,7 @@ module.exports.postSignUp = (req, res) => {
           email,
           password: hash,
           userImageUrl:
-            "https://cdn.glitch.com/9b1d0fdf-246e-4fdd-9575-5734520b815a%2Fundraw_female_avatar_w3jk.svg?v=1591767462454",
+            "https://res.cloudinary.com/coders-tokyo/image/upload/v1591775364/drfer33g1nvkbrxexj8j.jpg",
         });
 
         user.save((err, user) => {

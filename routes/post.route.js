@@ -4,7 +4,7 @@ const router = express.Router();
 const middleware = require("../middleware/requireLogin.middleware");
 const postController = require("../controllers/post.controller");
 
-router.get("/posts", middleware.requiredLogin, postController.getAllPosts);
+router.get("/posts", postController.getAllPosts);
 
 router.get(
   "/comments",
