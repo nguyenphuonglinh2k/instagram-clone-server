@@ -10,6 +10,24 @@ router.get("/", (req, res) => {
 
 router.get("/users/:userId", userController.getUser);
 
+router.get(
+  "/users/:userId/followers",
+  middleware.requiredLogin,
+  userController.getFollowers
+);
+
+router.get(
+  "/users/:userId/following",
+  middleware.requiredLogin,
+  userController.getFollowing
+);
+
 router.put("/follow", middleware.requiredLogin, userController.follow);
+
+router.put(
+  "/users/:userId/profile",
+  middleware.requiredLogin,
+  userController.putProfile
+);
 
 module.exports = router;

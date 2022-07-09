@@ -8,6 +8,40 @@ module.exports.getUser = async (req, res) => {
   res.json(user);
 };
 
+module.exports.getFollowers = async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const user = await User.findById({ _id: userId });
+    const followers = user.followers || [];
+
+    const followerUserArr = await User.find({ _id: { $in: followers } }).select(
+      "-password"
+    );
+
+    res.json(followerUserArr);
+  } catch (error) {
+    res.status(400).json(error);
+  }
+};
+
+module.exports.getFollowing = async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const user = await User.findById({ _id: userId });
+    const following = user.following || [];
+
+    const followingUserArr = await User.find({
+      _id: { $in: following },
+    }).select("-password");
+
+    res.json(followingUserArr);
+  } catch (error) {
+    res.status(400).json(error);
+  }
+};
+
 module.exports.follow = async (req, res) => {
   const { followId } = req.body;
   const user = req.user;
@@ -17,32 +51,52 @@ module.exports.follow = async (req, res) => {
   let isExisted = userExist.following.find((item) => item == followId);
 
   if (!isExisted) {
-    User.findByIdAndUpdate(
+    User.updateOne(
       { _id: followId },
       {
-        $push: { followers: user._id },
+        followers: user._id,
       },
-      {
-        new: true,
-      }
+      {}
     )
       .select("-password")
       .then((result) => res.json(result))
-      .catch((err) => res.json({ error: err }));
+      .catch((err) => res.status(400).json({ error: err }));
 
-    User.findByIdAndUpdate(
+    User.updateOne(
       { _id: user._id },
       {
-        $push: { following: followId },
+        following: followId,
       },
-      {
-        new: true,
-      },
-      (err, result) => {
+      {},
+      (err) => {
         if (err) {
-          return res.json({ error: err });
+          return res.status(400).json({ error: err });
         }
       }
     );
   }
+};
+
+module.exports.putProfile = async (req, res) => {
+  const userId = req.params.userId;
+  const { name, bio, imageSrc } = req.body;
+
+  const user = await User.findById({ _id: userId });
+
+  await User.updateOne(
+    { _id: userId },
+    {
+      name: name || user.name,
+      bio: bio || user.bio,
+      userImageUrl: imageSrc || user.userImageUrl,
+    },
+    {},
+    (err) => {
+      if (err) {
+        return res.status(400).json(err);
+      } else {
+        res.json({ message: "Update successfully" });
+      }
+    }
+  );
 };

@@ -12,6 +12,7 @@ const commentSchema = new mongoose.Schema(
       type: ObjectId,
       required: true,
     },
+    createdAt: Date,
     user: {
       _id: {
         type: ObjectId,
@@ -22,10 +23,6 @@ const commentSchema = new mongoose.Schema(
         required: true,
       },
       email: {
-        type: String,
-        required: true,
-      },
-      password: {
         type: String,
         required: true,
       },

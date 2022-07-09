@@ -32,13 +32,13 @@ module.exports.postSignIn = async (req, res) => {
         user: user,
       },
       process.env.JWT_KEY,
-      { expiresIn: "24h" }
+      { expiresIn: "1h" }
     );
 
     const { _id, email, name, userImageUrl, followers, following } = user;
 
     return res.json({
-      token: token,
+      token,
       user: { _id, email, name, userImageUrl, followers, following },
     });
   });
@@ -58,7 +58,7 @@ module.exports.postSignUp = (req, res) => {
       const emailExtension = email.slice(-10);
 
       if (emailExtension !== "@gmail.com")
-        return res.json({ error: "Email is invalid" });
+        return res.status(400).json({ error: "Email is invalid" });
 
       bcrypt.hash(password, 12, function (err, hash) {
         if (err) console.log(err);
@@ -67,6 +67,7 @@ module.exports.postSignUp = (req, res) => {
           name,
           email,
           password: hash,
+          bio: "",
           userImageUrl:
             "https://res.cloudinary.com/coders-tokyo/image/upload/v1591775364/drfer33g1nvkbrxexj8j.jpg",
         });
@@ -74,7 +75,7 @@ module.exports.postSignUp = (req, res) => {
         user.save((err, user) => {
           if (err) {
             console.log(err);
-            return res.json({ error: "Sign up is failed" });
+            return res.status(400).json({ error: "Sign up is failed" });
           }
 
           console.log("Saved successfully");

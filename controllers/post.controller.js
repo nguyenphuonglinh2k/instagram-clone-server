@@ -1,20 +1,60 @@
 const Post = require("../models/post.model");
 const Like = require("../models/like.model");
 const Comment = require("../models/comment.model");
+const User = require("../models/user.model");
 
 module.exports.getAllPosts = async (_, res) => {
   const allPost = await Post.find().sort({ createdAt: -1 });
   res.status(200).json(allPost);
 };
 
-module.exports.getAllLikes = async (req, res) => {
+module.exports.getMyPosts = async (req, res) => {
+  const userId = parseInt(req.params.userId);
+
+  try {
+    const posts = await Post.find();
+
+    const filteredPosts = posts.filter((post) => {
+      return parseInt(post.user._id.valueOf()) === userId;
+    });
+
+    res.status(200).json(filteredPosts);
+  } catch (error) {
+    res.status(400).json(error);
+  }
+};
+
+module.exports.getAllLikes = async (_, res) => {
   const allLike = await Like.find();
   res.status(200).json(allLike);
 };
 
-module.exports.getAllComments = async (req, res) => {
+module.exports.getMyLikes = async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const allLike = await Like.find({ userId });
+
+    res.status(200).json(allLike);
+  } catch (error) {
+    res.status(400).json({ error });
+  }
+};
+
+module.exports.getAllComments = async (_, res) => {
   const allComment = await Comment.find();
-  res.json(allComment);
+  res.status(200).json(allComment);
+};
+
+module.exports.getAllCommentOfPost = async (req, res) => {
+  const postId = req.params.postId;
+
+  try {
+    const allComment = await Comment.find({ postId });
+    res.status(200).json(allComment);
+  } catch (error) {
+    res.status(400).json({ error });
+  }
 };
 
 module.exports.postCreateMyPost = async (req, res) => {
@@ -45,15 +85,15 @@ module.exports.postCreateMyPost = async (req, res) => {
 };
 
 module.exports.postActionLike = async (req, res) => {
-  const user = req.user;
+  const userId = req.params.userId;
   const { postId } = req.body;
 
-  const actionLike = await Like.findOne({ postId: postId, userId: user._id });
+  const actionLike = await Like.findOne({ postId: postId, userId });
 
   if (!actionLike) {
     const newActionLike = new Like({
       postId,
-      userId: user._id,
+      userId,
       isLiked: true,
     });
 
@@ -65,38 +105,45 @@ module.exports.postActionLike = async (req, res) => {
 
     let likes = await Like.find();
     likes.push(newActionLike);
-    console.log(likes);
 
     return res.json(likes);
   }
 
-  Like.findOneAndDelete({ postId: postId, userId: user._id }).then(
-    (result) => {}
-  );
+  Like.findOneAndDelete({ postId: postId, userId }).then((result) => {});
 
-  let likes = await Like.find();
-  console.log(likes);
-
-  return res.json(likes);
+  try {
+    let likes = await Like.find();
+    return res.status(200).json(likes);
+  } catch (error) {
+    return res.status(400).json({ error });
+  }
 };
 
 module.exports.postComment = async (req, res) => {
-  const user = req.user;
-  const { postId, caption } = req.body;
+  const { postId, userId } = req.params;
+  const { caption } = req.body;
 
-  const comment = new Comment({
-    caption,
-    postId,
-    user: user,
-  });
+  try {
+    const user = await User.findById({ _id: userId }).select("-password");
+    const createdAt = new Date();
 
-  comment.save(async (err, comment) => {
-    if (err) {
-      console.log(err);
-    }
+    const comment = new Comment({
+      caption,
+      postId,
+      user: user,
+      createdAt,
+    });
 
-    let comments = await Comment.find();
+    comment.save(async (err, comment) => {
+      if (err) {
+        console.log(err);
+      }
 
-    res.json(comments);
-  });
+      let comments = await Comment.find();
+
+      res.status(200).json(comments);
+    });
+  } catch (error) {
+    res.status(400).json(error);
+  }
 };
