@@ -32,11 +32,15 @@ module.exports.getFollowers = async (req, res) => {
       const authFollowers = authUser.following || [];
 
       followerUserArr = followerUserArr.sort((firstElm, secondElm) => {
-        if (
+        if (String(firstElm._id.valueOf()) === authUserId) {
+          return -1;
+        } else if (String(secondElm._id.valueOf()) === authUserId) {
+          return 1;
+        } else if (
           authFollowers.includes(String(firstElm._id.valueOf())) ||
           authFollowers.includes(String(secondElm._id.valueOf()))
         ) {
-          return 1;
+          return -1;
         } else {
           return 0;
         }
