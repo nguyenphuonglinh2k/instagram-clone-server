@@ -28,14 +28,16 @@ const postSchema = new mongoose.Schema(
         type: String,
         required: true,
       },
-      password: {
-        type: String,
-        required: true,
-      },
       userImageUrl: {
         type: String,
         required: true,
       },
+      bio: {
+        type: String,
+        required: false,
+      },
+      followers: [ObjectId],
+      following: [ObjectId],
     },
   },
   {

@@ -4,18 +4,22 @@ const Comment = require("../models/comment.model");
 const User = require("../models/user.model");
 
 module.exports.getAllPosts = async (_, res) => {
-  const allPost = await Post.find().sort({ createdAt: -1 });
-  res.status(200).json(allPost);
+  try {
+    const allPost = await Post.find().sort({ createdAt: -1 });
+    res.status(200).json(allPost);
+  } catch (error) {
+    console.log("error", error);
+  }
 };
 
 module.exports.getMyPosts = async (req, res) => {
-  const userId = parseInt(req.params.userId);
+  const userId = req.params.userId;
 
   try {
     const posts = await Post.find();
 
     const filteredPosts = posts.filter((post) => {
-      return parseInt(post.user._id.valueOf()) === userId;
+      return String(post.user._id.valueOf()) === userId;
     });
 
     res.status(200).json(filteredPosts);
@@ -59,17 +63,20 @@ module.exports.getAllCommentOfPost = async (req, res) => {
 
 module.exports.postCreateMyPost = async (req, res) => {
   const { imageUrl, caption } = req.body;
-  const user = req.user;
+  const userId = req.params.userId;
 
-  if (!imageUrl || !caption)
+  if (!imageUrl || !caption) {
     return res.json({ error: "Please filled the field" });
+  }
+
+  const user = await User.findById({ _id: userId }).select("-password");
 
   const date = new Date();
 
   const newPost = new Post({
     caption,
     imageUrl,
-    user: user,
+    user,
     createdAt: date,
   });
 

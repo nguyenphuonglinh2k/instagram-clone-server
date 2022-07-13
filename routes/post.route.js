@@ -33,7 +33,7 @@ router.get(
 );
 
 router.post(
-  "/post/create",
+  "/posts/:userId/create",
   middleware.requiredLogin,
   postController.postCreateMyPost
 );

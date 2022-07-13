@@ -12,20 +12,24 @@ module.exports.postSignIn = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.json({ error: "Please add all the fields" });
+    return res.status(400).json({ error: "Please add all the fields" });
   }
 
   const emailExtension = email.slice(-10);
 
   if (emailExtension !== "@gmail.com")
-    return res.json({ error: "Email is invalid" });
+    return res.status(400).json({ error: "Email is invalid" });
 
   let user = await User.findOne({ email: email });
 
-  if (!user) return res.json({ error: "Email is not exist" });
+  if (!user) return res.status(400).json({ error: "Email is not exist" });
 
   bcrypt.compare(password, user.password, function (err, result) {
-    if (!result) return res.json({ error: "Password is wrong" });
+    if (!result) {
+      return res
+        .status(400)
+        .json({ error: "Password is wrong. Please try again" });
+    }
 
     const token = jwt.sign(
       {
@@ -34,6 +38,8 @@ module.exports.postSignIn = async (req, res) => {
       process.env.JWT_KEY,
       { expiresIn: "1h" }
     );
+
+    console.log(token);
 
     const { _id, email, name, userImageUrl, followers, following } = user;
 
@@ -69,7 +75,7 @@ module.exports.postSignUp = (req, res) => {
           password: hash,
           bio: "",
           userImageUrl:
-            "https://res.cloudinary.com/coders-tokyo/image/upload/v1591775364/drfer33g1nvkbrxexj8j.jpg",
+            "https://res.cloudinary.com/coders-tokyo/image/upload/v1657474500/instello/avatar.png",
         });
 
         user.save((err, user) => {
@@ -125,8 +131,6 @@ module.exports.postResetPassword = async (req, res) => {
 
 module.exports.postUpdatePassword = (req, res) => {
   const { password, userId } = req.body;
-
-  console.log("userId: ", userId);
 
   if (!password) return res.json({ error: "Please filled the field" });
 

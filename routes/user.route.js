@@ -22,12 +22,22 @@ router.get(
   userController.getFollowing
 );
 
-router.put("/follow", middleware.requiredLogin, userController.follow);
+router.put(
+  "/users/:userId/follow/:followId",
+  middleware.requiredLogin,
+  userController.follow
+);
 
 router.put(
   "/users/:userId/profile",
   middleware.requiredLogin,
   userController.putProfile
+);
+
+router.put(
+  "/users/:userId/password",
+  middleware.requiredLogin,
+  userController.putPassword
 );
 
 module.exports = router;
