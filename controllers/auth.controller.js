@@ -36,7 +36,7 @@ module.exports.postSignIn = async (req, res) => {
         user: user,
       },
       process.env.JWT_KEY,
-      { expiresIn: "1h" }
+      { expiresIn: "24h" }
     );
 
     console.log(token);
