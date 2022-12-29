@@ -5,6 +5,9 @@ const sgMail = require("@sendgrid/mail");
 var jwt = require("jsonwebtoken");
 
 const User = require("../models/user.model");
+const Session = require("../models/session.model");
+
+const { generateOTP, sendOTPEmail } = require("./helpers");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -20,34 +23,61 @@ module.exports.postSignIn = async (req, res) => {
   if (emailExtension !== "@gmail.com")
     return res.status(400).json({ error: "Email is invalid" });
 
-  let user = await User.findOne({ email: email });
+  const user = await User.findOne({ email }).lean();
 
   if (!user) return res.status(400).json({ error: "Email is not exist" });
 
-  bcrypt.compare(password, user.password, function (err, result) {
+  bcrypt.compare(password, user.password, async function (err, result) {
     if (!result) {
       return res
         .status(400)
         .json({ error: "Password is wrong. Please try again" });
     }
 
-    const token = jwt.sign(
-      {
-        user: user,
-      },
-      process.env.JWT_KEY,
-      { expiresIn: "24h" }
+    const token = jwt.sign({ user }, process.env.JWT_KEY, { expiresIn: "24h" });
+
+    // Send OTP to user's mail in order to confirm login session
+    const OTP = generateOTP();
+    sendOTPEmail(process.env.MAIL_EMAIL, OTP);
+
+    const now = new Date();
+
+    // Store OTP and creation time in DB
+    await Session.findOneAndUpdate(
+      { email },
+      { email, otp: OTP, createdAt: now },
+      { upsert: true }
     );
 
-    console.log(token);
-
-    const { _id, email, name, userImageUrl, followers, following } = user;
+    delete user.password;
 
     return res.json({
       token,
-      user: { _id, email, name, userImageUrl, followers, following },
+      user,
     });
   });
+};
+
+module.exports.confirmOtp = async (req, res) => {
+  const { otp, email } = req.body;
+
+  // Check OTP and expired time
+  const session = await Session.findOne({ email });
+
+  if (!session) return res.status(400).json({ message: "Email is not exist" });
+
+  const now = new Date();
+  const seconds = (now.getTime() - session.createdAt.getTime()) / 1000;
+
+  if (
+    session.otp === otp &&
+    seconds > 0 &&
+    seconds <= process.env.EXPIRED_TIME_OTP_IN_SECOND
+  ) {
+    res.status(200).json({ message: "Confirm successfully" });
+  } else {
+    res.status(401).json({ message: "OPT code is expired" });
+  }
 };
 
 module.exports.postSignUp = (req, res) => {

@@ -44,7 +44,7 @@ app.use("/api", userRoute);
 app.use("/api", postRoute);
 app.use("/api/auth", authRoute);
 
-app.get("/", (req, res) => {
+app.get("/", (_, res) => {
   res.send("Hello World!");
 });
 
