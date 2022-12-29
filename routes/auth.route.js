@@ -13,4 +13,9 @@ router.post("/password/reset", authController.postResetPassword);
 
 router.post("/password/reset/update", authController.postUpdatePassword);
 
+// Support
+router.post("/encodeAllUserData", authController.encodeAllUserData);
+
+router.post("/decodeAllUserData", authController.decodeAllUserData);
+
 module.exports = router;

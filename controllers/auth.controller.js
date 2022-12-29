@@ -7,7 +7,7 @@ var jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 const Session = require("../models/session.model");
 
-const { generateOTP, sendOTPEmail } = require("./helpers");
+const { generateOTP, sendOTPEmail, encrypt, decrypt } = require("./helpers");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -175,4 +175,37 @@ module.exports.postUpdatePassword = (req, res) => {
       })
       .catch((err) => console.log(err));
   });
+};
+
+module.exports.encodeAllUserData = (_, res) => {
+  User.find({}, (err, docs) => {
+    if (err) return res.status(400).json({ message: "Something went wrong" });
+
+    docs.forEach((doc) => {
+      doc.name = encrypt(doc.name);
+
+      doc.save((err) => {
+        if (err) {
+          return res.status(400).json({ message: "Encode data failed" });
+        }
+      });
+    });
+  });
+  res.json({ message: "Encode successfully" });
+};
+
+module.exports.decodeAllUserData = (_, res) => {
+  User.find({}, (err, docs) => {
+    if (err) return res.status(400).json({ message: "Something went wrong" });
+
+    docs.forEach((doc) => {
+      doc.name = decrypt(doc.name);
+
+      doc.save((err) => {
+        if (err)
+          return res.status(400).json({ message: "Decode data failed", doc });
+      });
+    });
+  });
+  res.json({ message: "Decode successfully" });
 };

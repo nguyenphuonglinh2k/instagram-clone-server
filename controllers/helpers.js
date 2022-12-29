@@ -1,6 +1,7 @@
 const otpGenerator = require("otp-generator");
 const nodemailer = require("nodemailer");
 const smtpTransport = require("nodemailer-smtp-transport");
+const CryptoJS = require("crypto-js");
 
 module.exports.generateOTP = () => {
   const OTP = otpGenerator.generate(6, {
@@ -36,4 +37,27 @@ module.exports.sendOTPEmail = (email, otp) => {
       console.log("Email sent: " + info.response);
     }
   });
+};
+
+module.exports.encrypt = (message) => {
+  if (!message) return message;
+
+  const encryptedText = CryptoJS.AES.encrypt(
+    message,
+    process.env.CRYPTO_SECRET_KEY
+  ).toString();
+
+  return encryptedText;
+};
+
+module.exports.decrypt = (encryptedText) => {
+  if (!encryptedText) return encryptedText;
+
+  const bytes = CryptoJS.AES.decrypt(
+    encryptedText,
+    process.env.CRYPTO_SECRET_KEY
+  );
+  const originalText = bytes.toString(CryptoJS.enc.Utf8);
+
+  return originalText;
 };
