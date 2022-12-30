@@ -7,12 +7,18 @@ var jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 const Session = require("../models/session.model");
 
-const { generateOTP, sendOTPEmail, encrypt, decrypt } = require("./helpers");
+const {
+  generateOTP,
+  sendOTPEmail,
+  encrypt,
+  decrypt,
+  decryptOneUserData,
+} = require("./helpers");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 module.exports.postSignIn = async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: "Please add all the fields" });
@@ -23,7 +29,15 @@ module.exports.postSignIn = async (req, res) => {
   if (emailExtension !== "@gmail.com")
     return res.status(400).json({ error: "Email is invalid" });
 
-  const user = await User.findOne({ email }).lean();
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    email = encrypt(email);
+  }
+
+  let user = await User.findOne({ email }).lean(); // Mongoose Document -> Plain object js when use lean method
+
+  // Decrypt user data
+  user = decryptOneUserData(user);
 
   if (!user) return res.status(400).json({ error: "Email is not exist" });
 
@@ -81,20 +95,28 @@ module.exports.confirmOtp = async (req, res) => {
 };
 
 module.exports.postSignUp = (req, res) => {
-  const { name, email, password } = req.body;
+  let { name, email, password } = req.body;
 
+  // Check empty fields
   if (!name || !email || !password) {
     return res.json({ error: "Please add all the fields" });
   }
 
-  User.findOne({ email: email })
+  // Check email format
+  const emailExtension = email.slice(-10);
+
+  if (emailExtension !== "@gmail.com")
+    return res.status(400).json({ error: "Email is invalid" });
+
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    name = encrypt(name);
+    email = encrypt(email);
+  }
+
+  User.findOne({ email })
     .then((result) => {
       if (result) return res.json({ error: "Email already exist" });
-
-      const emailExtension = email.slice(-10);
-
-      if (emailExtension !== "@gmail.com")
-        return res.status(400).json({ error: "Email is invalid" });
 
       bcrypt.hash(password, 12, function (err, hash) {
         if (err) console.log(err);
@@ -178,34 +200,46 @@ module.exports.postUpdatePassword = (req, res) => {
 };
 
 module.exports.encodeAllUserData = (_, res) => {
-  User.find({}, (err, docs) => {
-    if (err) return res.status(400).json({ message: "Something went wrong" });
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    User.find({}, (err, docs) => {
+      if (err) return res.status(400).json({ message: "Something went wrong" });
 
-    docs.forEach((doc) => {
-      doc.name = encrypt(doc.name);
+      docs.forEach((doc) => {
+        doc.name = encrypt(doc.name);
+        doc.email = encrypt(doc.email);
+        doc.bio = encrypt(doc.bio);
 
-      doc.save((err) => {
-        if (err) {
-          return res.status(400).json({ message: "Encode data failed" });
-        }
+        doc.save((err) => {
+          if (err) {
+            return res.status(400).json({ message: "Encode data failed" });
+          }
+        });
       });
     });
-  });
-  res.json({ message: "Encode successfully" });
+    res.json({ message: "Encode successfully" });
+  } else {
+    res.json({ message: "Not permit to encode" });
+  }
 };
 
 module.exports.decodeAllUserData = (_, res) => {
-  User.find({}, (err, docs) => {
-    if (err) return res.status(400).json({ message: "Something went wrong" });
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    User.find({}, (err, docs) => {
+      if (err) return res.status(400).json({ message: "Something went wrong" });
 
-    docs.forEach((doc) => {
-      doc.name = decrypt(doc.name);
+      docs.forEach((doc) => {
+        doc.name = decrypt(doc.name);
+        doc.email = decrypt(doc.email);
+        doc.bio = decrypt(doc.bio);
 
-      doc.save((err) => {
-        if (err)
-          return res.status(400).json({ message: "Decode data failed", doc });
+        doc.save((err) => {
+          if (err)
+            return res.status(400).json({ message: "Decode data failed", doc });
+        });
       });
     });
-  });
-  res.json({ message: "Decode successfully" });
+    res.json({ message: "Decode successfully" });
+  } else {
+    res.json({ message: "Not permit to decode" });
+  }
 };

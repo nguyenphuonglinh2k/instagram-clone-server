@@ -3,6 +3,10 @@ const nodemailer = require("nodemailer");
 const smtpTransport = require("nodemailer-smtp-transport");
 const CryptoJS = require("crypto-js");
 
+const CRYPTO_KEY = CryptoJS.enc.Utf8.parse(
+  process.env.CRYPTO_SECRET_KEY_IN_UTF8 || ""
+);
+
 module.exports.generateOTP = () => {
   const OTP = otpGenerator.generate(6, {
     specialChars: false,
@@ -42,10 +46,9 @@ module.exports.sendOTPEmail = (email, otp) => {
 module.exports.encrypt = (message) => {
   if (!message) return message;
 
-  const encryptedText = CryptoJS.AES.encrypt(
-    message,
-    process.env.CRYPTO_SECRET_KEY
-  ).toString();
+  const encryptedText = CryptoJS.AES.encrypt(message, CRYPTO_KEY, {
+    mode: CryptoJS.mode.ECB,
+  }).toString();
 
   return encryptedText;
 };
@@ -53,11 +56,23 @@ module.exports.encrypt = (message) => {
 module.exports.decrypt = (encryptedText) => {
   if (!encryptedText) return encryptedText;
 
-  const bytes = CryptoJS.AES.decrypt(
-    encryptedText,
-    process.env.CRYPTO_SECRET_KEY
-  );
+  const bytes = CryptoJS.AES.decrypt(encryptedText, CRYPTO_KEY, {
+    mode: CryptoJS.mode.ECB,
+  });
   const originalText = bytes.toString(CryptoJS.enc.Utf8);
 
   return originalText;
+};
+
+module.exports.decryptOneUserData = (
+  object = { name: "", email: "", bio: "" }
+) => {
+  const { name, email, bio } = object;
+
+  return {
+    ...object,
+    name: this.decrypt(name),
+    email: this.decrypt(email),
+    bio: this.decrypt(bio),
+  };
 };
