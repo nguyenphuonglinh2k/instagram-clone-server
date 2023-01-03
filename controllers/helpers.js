@@ -65,14 +65,19 @@ module.exports.decrypt = (encryptedText) => {
 };
 
 module.exports.decryptOneUserData = (
-  object = { name: "", email: "", bio: "" }
+  object = { name: "", email: "", bio: "", userImageUrl: "" }
 ) => {
-  const { name, email, bio } = object;
+  if (object) {
+    const { name, email, bio, userImageUrl } = object;
 
-  return {
-    ...object,
-    name: this.decrypt(name),
-    email: this.decrypt(email),
-    bio: this.decrypt(bio),
-  };
+    return {
+      ...object,
+      ...(name ? { name: this.decrypt(name) } : {}),
+      ...(email ? { email: this.decrypt(email) } : {}),
+      ...(bio ? { bio: this.decrypt(bio) } : {}),
+      ...(userImageUrl ? { userImageUrl: this.decrypt(userImageUrl) } : {}),
+    };
+  } else {
+    return {};
+  }
 };

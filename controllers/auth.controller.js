@@ -36,8 +36,11 @@ module.exports.postSignIn = async (req, res) => {
 
   let user = await User.findOne({ email }).lean(); // Mongoose Document -> Plain object js when use lean method
 
-  // Decrypt user data
-  user = decryptOneUserData(user);
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    // Decrypt user data
+    user = decryptOneUserData(user);
+  }
 
   if (!user) return res.status(400).json({ error: "Email is not exist" });
 
@@ -73,7 +76,12 @@ module.exports.postSignIn = async (req, res) => {
 };
 
 module.exports.confirmOtp = async (req, res) => {
-  const { otp, email } = req.body;
+  let { otp, email } = req.body;
+
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    email = encrypt(email);
+  }
 
   // Check OTP and expired time
   const session = await Session.findOne({ email });
@@ -96,6 +104,8 @@ module.exports.confirmOtp = async (req, res) => {
 
 module.exports.postSignUp = (req, res) => {
   let { name, email, password } = req.body;
+  let userImageUrl =
+    "https://res.cloudinary.com/coders-tokyo/image/upload/v1657474500/instello/avatar.png";
 
   // Check empty fields
   if (!name || !email || !password) {
@@ -112,6 +122,7 @@ module.exports.postSignUp = (req, res) => {
   if (process.env.IS_ENCODE_USER_INFO === "true") {
     name = encrypt(name);
     email = encrypt(email);
+    userImageUrl = encrypt(userImageUrl);
   }
 
   User.findOne({ email })
@@ -126,8 +137,7 @@ module.exports.postSignUp = (req, res) => {
           email,
           password: hash,
           bio: "",
-          userImageUrl:
-            "https://res.cloudinary.com/coders-tokyo/image/upload/v1657474500/instello/avatar.png",
+          userImageUrl,
         });
 
         user.save((err, user) => {
@@ -145,16 +155,20 @@ module.exports.postSignUp = (req, res) => {
 };
 
 module.exports.postResetPassword = async (req, res) => {
-  const { email } = req.body;
+  let { email } = req.body;
 
   if (!email) return res.json({ error: "Please filled the field" });
-
-  const user = await User.findOne({ email: email });
 
   const emailExtension = email.slice(-10);
 
   if (emailExtension !== "@gmail.com")
     return res.json({ error: "Email is invalid" });
+
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    email = encrypt(email);
+  }
+
+  const user = await User.findOne({ email });
 
   if (!user) {
     return res.json({ error: "Email is not exist" });
@@ -199,15 +213,16 @@ module.exports.postUpdatePassword = (req, res) => {
   });
 };
 
-module.exports.encodeAllUserData = (_, res) => {
+module.exports.encodeAllUserData = async (_, res) => {
   if (process.env.IS_ENCODE_USER_INFO === "true") {
-    User.find({}, (err, docs) => {
+    await User.find({}, (err, docs) => {
       if (err) return res.status(400).json({ message: "Something went wrong" });
 
       docs.forEach((doc) => {
         doc.name = encrypt(doc.name);
         doc.email = encrypt(doc.email);
         doc.bio = encrypt(doc.bio);
+        doc.userImageUrl = encrypt(doc.userImageUrl);
 
         doc.save((err) => {
           if (err) {
@@ -222,15 +237,16 @@ module.exports.encodeAllUserData = (_, res) => {
   }
 };
 
-module.exports.decodeAllUserData = (_, res) => {
+module.exports.decodeAllUserData = async (_, res) => {
   if (process.env.IS_ENCODE_USER_INFO === "true") {
-    User.find({}, (err, docs) => {
+    await User.find({}, (err, docs) => {
       if (err) return res.status(400).json({ message: "Something went wrong" });
 
       docs.forEach((doc) => {
         doc.name = decrypt(doc.name);
         doc.email = decrypt(doc.email);
         doc.bio = decrypt(doc.bio);
+        doc.userImageUrl = decrypt(doc.userImageUrl);
 
         doc.save((err) => {
           if (err)

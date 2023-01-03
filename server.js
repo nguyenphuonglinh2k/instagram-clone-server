@@ -13,7 +13,6 @@ const Like = require("./models/like.model");
 const userRoute = require("./routes/user.route");
 const postRoute = require("./routes/post.route");
 const authRoute = require("./routes/auth.route");
-const { encrypt } = require("./controllers/helpers");
 
 // Connect Mongo
 mongoose.connect(process.env.MONGO_URI, {
@@ -51,6 +50,5 @@ app.get("/", (_, res) => {
 
 // app.listen(apiPort, () => console.log(`Server running on port ${apiPort}`))
 http.listen(apiPort, function () {
-  const a = encrypt("andy@gmail.com");
-  console.log("Listening on *:" + apiPort, `${a} `, encrypt("andy@gmail.com"));
+  console.log("Listening on *:" + apiPort);
 });

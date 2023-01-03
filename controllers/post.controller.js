@@ -2,6 +2,7 @@ const Post = require("../models/post.model");
 const Like = require("../models/like.model");
 const Comment = require("../models/comment.model");
 const User = require("../models/user.model");
+const { decryptOneUserData } = require("./helpers");
 
 module.exports.getAllPosts = async (_, res) => {
   try {
@@ -16,7 +17,15 @@ module.exports.getMyPosts = async (req, res) => {
   const userId = req.params.userId;
 
   try {
-    const posts = await Post.find();
+    let posts = await Post.find().lean();
+
+    // // Check has encoded data
+    // if (process.env.IS_ENCODE_USER_INFO === "true") {
+    //   posts = posts.map((post) => ({
+    //     ...post,
+    //     user: decryptOneUserData(post.user),
+    //   }));
+    // }
 
     const filteredPosts = posts.filter((post) => {
       return String(post.user._id.valueOf()) === userId;
@@ -46,7 +55,16 @@ module.exports.getMyLikes = async (req, res) => {
 };
 
 module.exports.getAllComments = async (_, res) => {
-  const allComment = await Comment.find();
+  let allComment = await Comment.find();
+
+  // Check has encoded data
+  // if (process.env.IS_ENCODE_USER_INFO === "true") {
+  //   allComment = allComment.map((comment) => ({
+  //     ...comment,
+  //     user: decryptOneUserData(comment.user),
+  //   }));
+  // }
+
   res.status(200).json(allComment);
 };
 
@@ -54,7 +72,16 @@ module.exports.getAllCommentOfPost = async (req, res) => {
   const postId = req.params.postId;
 
   try {
-    const allComment = await Comment.find({ postId });
+    let allComment = await Comment.find({ postId });
+
+    // Check has encoded data
+    // if (process.env.IS_ENCODE_USER_INFO === "true") {
+    //   allComment = {
+    //     ...allComment,
+    //     user: decryptOneUserData(comment.user),
+    //   };
+    // }
+
     res.status(200).json(allComment);
   } catch (error) {
     res.status(400).json({ error });
@@ -69,7 +96,12 @@ module.exports.postCreateMyPost = async (req, res) => {
     return res.json({ error: "Please filled the field" });
   }
 
-  const user = await User.findById({ _id: userId }).select("-password");
+  let user = await User.findById({ _id: userId }).select("-password").lean();
+
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    user = decryptOneUserData(user);
+  }
 
   const date = new Date();
 
@@ -116,7 +148,7 @@ module.exports.postActionLike = async (req, res) => {
     return res.json(likes);
   }
 
-  Like.findOneAndDelete({ postId: postId, userId }).then((result) => {});
+  Like.findOneAndDelete({ postId, userId }).then((result) => {});
 
   try {
     let likes = await Like.find();
@@ -131,13 +163,19 @@ module.exports.postComment = async (req, res) => {
   const { caption } = req.body;
 
   try {
-    const user = await User.findById({ _id: userId }).select("-password");
+    let user = await User.findById({ _id: userId }).select("-password").lean();
+
+    // Check has encoded data
+    if (process.env.IS_ENCODE_USER_INFO === "true") {
+      user = decryptOneUserData(user);
+    }
+
     const createdAt = new Date();
 
     const comment = new Comment({
       caption,
       postId,
-      user: user,
+      user,
       createdAt,
     });
 

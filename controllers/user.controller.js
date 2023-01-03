@@ -4,10 +4,18 @@ const bcrypt = require("bcrypt");
 
 const User = require("../models/user.model");
 const Post = require("../models/post.model");
+const { decryptOneUserData, encrypt } = require("./helpers");
 
 module.exports.getUser = async (req, res) => {
   const userId = req.params.userId;
-  const user = await User.findById({ _id: userId }).select("-password");
+  let user = await User.findById({ _id: userId }).select("-password").lean();
+
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    // Decrypt user data
+    user = decryptOneUserData(user);
+  }
+
   res.json(user);
 };
 
@@ -16,15 +24,23 @@ module.exports.getFollowers = async (req, res) => {
   const authUserId = req.user._id;
 
   try {
-    const user = await User.findById({ _id: userId });
-    const authUser = await User.findById({ _id: authUserId });
+    let user = await User.findById({ _id: userId });
+    let authUser = await User.findById({ _id: authUserId });
 
     const followers = user.followers || [];
     const authFollowing = authUser.following || [];
 
     let followerUserArr = await User.find({
       _id: { $in: followers },
-    }).select("-password");
+    })
+      .select("-password")
+      .lean();
+
+    // Check has encoded data
+    if (process.env.IS_ENCODE_USER_INFO === "true") {
+      // Decrypt followerUserArr
+      followerUserArr = followerUserArr.map((item) => decryptOneUserData(item));
+    }
 
     if (authUserId !== userId) {
       const authUser = await User.findById({ _id: authUserId });
@@ -47,22 +63,13 @@ module.exports.getFollowers = async (req, res) => {
       });
     }
 
-    const updatedFollowers = followerUserArr.map((item) => {
-      if (authFollowing.includes(String(item._id))) {
-        return {
-          _id: item._id,
-          name: item.name,
-          userImageUrl: item.userImageUrl,
-          isFollowing: true,
-        };
-      } else {
-        return {
-          _id: item._id,
-          name: item.name,
-          userImageUrl: item.userImageUrl,
-          isFollowing: false,
-        };
-      }
+    let updatedFollowers = followerUserArr.map((item) => {
+      return {
+        _id: item._id,
+        name: item.name,
+        userImageUrl: item.userImageUrl,
+        isFollowing: authFollowing.includes(String(item._id)),
+      };
     });
 
     res.json(updatedFollowers);
@@ -82,26 +89,27 @@ module.exports.getFollowing = async (req, res) => {
     const following = user.following || [];
     const authFollowing = authUser.following || [];
 
-    const followingUserArr = await User.find({
+    let followingUserArr = await User.find({
       _id: { $in: following },
-    }).select("-password");
+    })
+      .select("-password")
+      .lean();
+
+    // Check has encoded data
+    if (process.env.IS_ENCODE_USER_INFO === "true") {
+      // Decrypt followingUserArr
+      followingUserArr = followingUserArr.map((item) =>
+        decryptOneUserData(item)
+      );
+    }
 
     const updatedFollowing = followingUserArr.map((item) => {
-      if (authFollowing.includes(String(item._id))) {
-        return {
-          _id: item._id,
-          name: item.name,
-          userImageUrl: item.userImageUrl,
-          isFollowing: true,
-        };
-      } else {
-        return {
-          _id: item._id,
-          name: item.name,
-          userImageUrl: item.userImageUrl,
-          isFollowing: false,
-        };
-      }
+      return {
+        _id: item._id,
+        name: item.name,
+        userImageUrl: item.userImageUrl,
+        isFollowing: authFollowing.includes(String(item._id)),
+      };
     });
 
     res.json(updatedFollowing);
@@ -184,11 +192,18 @@ module.exports.follow = async (req, res) => {
 
 module.exports.putProfile = async (req, res) => {
   const userId = req.params.userId;
-  const { name, bio, imageSrc } = req.body;
+  let { name, bio, imageSrc } = req.body;
 
-  const user = await User.findById({ _id: userId }).select("-password");
+  let user = await User.findById({ _id: userId }).select("-password");
 
-  const userInfo = {
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    name = encrypt(name);
+    imageSrc = encrypt(imageSrc);
+    bio = encrypt(bio);
+  }
+
+  let userInfo = {
     _id: user._id,
     followers: user.followers,
     following: user.following,
@@ -224,6 +239,11 @@ module.exports.putProfile = async (req, res) => {
       }
     }
   );
+
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    userInfo = decryptOneUserData(userInfo);
+  }
 
   Post.updateMany(
     { _id: { $in: updatedPostIdsArr } },
@@ -286,11 +306,18 @@ module.exports.putPassword = async (req, res) => {
 };
 
 module.exports.putAvatar = async (_, res) => {
+  let userImageUrl =
+    "https://res.cloudinary.com/coders-tokyo/image/upload/v1657474500/instello/avatar.png";
+
+  // Check has encoded data
+  if (process.env.IS_ENCODE_USER_INFO === "true") {
+    userImageUrl = encrypt(userImageUrl);
+  }
+
   await User.updateMany(
     {},
     {
-      userImageUrl:
-        "https://res.cloudinary.com/coders-tokyo/image/upload/v1657474500/instello/avatar.png",
+      userImageUrl,
     },
     {},
     (err) => {
